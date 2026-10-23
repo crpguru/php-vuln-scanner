@@ -1,404 +1,269 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enterprise Vulnerability Management</title>
-    <!-- Tailwind CSS -->
+    <title>PHP RCE Diagnostic & Remediation Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
                     colors: {
-                        slate: {
-                            850: '#151f32',
-                            900: '#0f172a',
-                            950: '#020617',
-                        },
-                        brand: {
-                            primary: '#3b82f6', // blue-500
-                            hover: '#2563eb', // blue-600
-                            danger: '#ef4444', // red-500
-                            success: '#10b981', // emerald-500
-                        }
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+                        slate: { 850: '#151e2e', 900: '#0f172a' },
+                        brand: { 500: '#3b82f6', 600: '#2563eb' }
                     }
                 }
             }
         }
     </script>
-    <!-- React & ReactDOM -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-    <!-- Babel -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
-        body {
-            background-color: #020617;
-            color: #f8fafc;
-            font-family: 'Inter', sans-serif;
-        }
-        
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #020617; 
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #334155; 
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #475569; 
-        }
-
-        .enterprise-card {
-            background-color: #0f172a;
-            border: 1px solid #1e293b;
-            border-radius: 0.75rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
+        body { background-color: #0f172a; color: #e2e8f0; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(51, 65, 85, 0.5); backdrop-filter: blur(12px); }
+        .chat-scroll::-webkit-scrollbar { width: 6px; }
+        .chat-scroll::-webkit-scrollbar-thumb { background-color: #475569; border-radius: 4px; }
     </style>
 </head>
-<body class="min-h-screen p-4 md:p-8 bg-slate-950">
-    <div id="root"></div>
+<body class="min-h-screen p-4 md:p-8 font-sans flex flex-col items-center">
 
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+    <!-- Header -->
+    <header class="w-full max-w-6xl flex justify-between items-center mb-8 glass-panel p-5 rounded-xl shadow-lg">
+        <div class="flex items-center gap-4">
+            <div class="p-3 bg-blue-500/20 text-blue-400 rounded-lg">
+                <i class="fa-solid fa-shield-halved text-2xl"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold text-white tracking-tight">Threat Intelligence Dashboard</h1>
+                <p class="text-sm text-slate-400">PHP Remote Code Execution (RCE) Vulnerability Advisory</p>
+            </div>
+        </div>
+        <div class="hidden md:flex items-center gap-2 px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-full">
+            <div class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+            <span class="text-sm font-semibold text-red-400">CVSS: 9.8 CRITICAL</span>
+        </div>
+    </header>
 
-        // Inline SVGs for perfect rendering without external script dependencies fighting React
-        const Icons = {
-            Shield: () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>,
-            Radar: () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 21v-4.872c0-1.143.99-1.95 2.1-1.95h3.3c1.11 0 2.1.807 2.1 1.95V21m0 0h-8.25m8.25 0h3.75m-12 0h3.75C5.74 21 4.5 19.76 4.5 18.25V5.75C4.5 4.24 5.74 3 7.25 3h9.5c1.51 0 2.75 1.24 2.75 2.75v12.5c0 1.51-1.24 2.75-2.75 2.75M12 9v2.25m0 0h2.25m-2.25 0H9.75" /></svg>,
-            Alert: () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2.25m0 4.5h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
-            CheckCircle: () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
-            Book: () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" /></svg>,
-            Bot: () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" /></svg>,
-            Send: () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
-        };
-
-        const Header = () => (
-            <header className="mb-8 border-b border-slate-800 pb-5">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-brand-primary/10 text-brand-primary rounded-lg">
-                            <Icons.Shield />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-bold text-white tracking-tight">Threat Intelligence Dashboard</h1>
-                            <p className="text-sm text-slate-400 mt-1">PHP Remote Code Execution (RCE) Vulnerability Advisory</p>
-                        </div>
+    <main class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Left Column: Generator & Playbook -->
+        <div class="lg:col-span-2 flex flex-col gap-6">
+            
+            <!-- Fleet Audit Generator -->
+            <section class="glass-panel rounded-xl p-6 shadow-lg relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+                <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-terminal text-blue-400"></i> Fleet Audit Script Generator
+                </h2>
+                <p class="text-sm text-slate-400 mb-4">Generate safe internal audit commands for your IT team to identify vulnerable PHP environments.</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Operating System</label>
+                        <select id="os-select" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="ubuntu">Ubuntu / Debian</option>
+                            <option value="rhel">RHEL / CentOS / AlmaLinux</option>
+                            <option value="alpine">Alpine Linux (Docker)</option>
+                        </select>
                     </div>
-                    <div className="hidden md:flex items-center gap-4">
-                        <div className="flex items-center gap-2 text-sm bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-full">
-                            <span className="w-2 h-2 rounded-full bg-brand-danger animate-pulse"></span>
-                            <span className="text-slate-300 font-medium">CVSS: 9.8 CRITICAL</span>
-                        </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Web Server Environment</label>
+                        <select id="env-select" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="apache">Apache (mod_php)</option>
+                            <option value="nginx">Nginx (PHP-FPM)</option>
+                            <option value="cli">CLI Only</option>
+                        </select>
                     </div>
                 </div>
-            </header>
-        );
+                
+                <button onclick="generateScript()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-colors mb-4">
+                    Generate Diagnostic Commands
+                </button>
 
-        const Scanner = () => {
-            const [url, setUrl] = useState('');
-            const [isScanning, setIsScanning] = useState(false);
-            const [progress, setProgress] = useState(0);
-            const [result, setResult] = useState(null);
-
-            const handleScan = (e) => {
-                e.preventDefault();
-                if (!url) return;
-
-                setIsScanning(true);
-                setProgress(0);
-                setResult(null);
-
-                const interval = setInterval(() => {
-                    setProgress(p => {
-                        if (p >= 100) {
-                            clearInterval(interval);
-                            setIsScanning(false);
-                            // Simulating high probability of vulnerability for demonstration
-                            const isVuln = Math.random() > 0.3;
-                            setResult({
-                                status: isVuln ? 'VULNERABLE' : 'SECURE',
-                                message: isVuln 
-                                    ? 'Exploitable PHP signature detected. Immediate patching required.' 
-                                    : 'Endpoint appears patched or is not running vulnerable PHP versions.'
-                            });
-                            return 100;
-                        }
-                        return p + Math.floor(Math.random() * 20) + 10;
-                    });
-                }, 400);
-            };
-
-            return (
-                <div className="enterprise-card p-6 mb-6">
-                    <h2 className="text-lg font-semibold mb-5 flex items-center gap-2 text-white">
-                        <Icons.Radar />
-                        Endpoint Diagnostic Scan
-                    </h2>
-                    
-                    <form onSubmit={handleScan} className="flex gap-3 mb-6">
-                        <input 
-                            type="text" 
-                            placeholder="Enter target IP or domain (e.g., prod-web-01.internal)" 
-                            className="flex-1 bg-slate-950 border border-slate-700 text-slate-100 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all placeholder:text-slate-500"
-                            value={url}
-                            onChange={(e) => setUrl(e.target.value)}
-                            disabled={isScanning}
-                        />
-                        <button 
-                            type="submit" 
-                            disabled={isScanning || !url}
-                            className="bg-brand-primary text-white text-sm font-medium px-6 py-2.5 rounded-lg hover:bg-brand-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm"
-                        >
-                            {isScanning ? 'Analyzing...' : 'Run Diagnostics'}
-                        </button>
-                    </form>
-
-                    {isScanning && (
-                        <div className="mb-2">
-                            <div className="flex justify-between text-xs text-slate-400 mb-2 font-medium">
-                                <span>Probing headers & executing safe payload checks...</span>
-                                <span>{progress}%</span>
-                            </div>
-                            <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden">
-                                <div 
-                                    className="bg-brand-primary h-full transition-all duration-300 ease-out"
-                                    style={{ width: `${progress}%` }}
-                                ></div>
-                            </div>
-                        </div>
-                    )}
-
-                    {result && (
-                        <div className={`p-4 rounded-lg border ${result.status === 'VULNERABLE' ? 'bg-red-950/30 border-red-900/50' : 'bg-emerald-950/30 border-emerald-900/50'}`}>
-                            <div className="flex items-start gap-3">
-                                <div className={`mt-0.5 ${result.status === 'VULNERABLE' ? 'text-brand-danger' : 'text-brand-success'}`}>
-                                    {result.status === 'VULNERABLE' ? <Icons.Alert /> : <Icons.CheckCircle />}
-                                </div>
-                                <div>
-                                    <h3 className={`font-semibold text-sm mb-1 ${result.status === 'VULNERABLE' ? 'text-red-400' : 'text-emerald-400'}`}>
-                                        Diagnostic Result: {result.status}
-                                    </h3>
-                                    <p className="text-sm text-slate-300">{result.message}</p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                <div id="script-output-container" class="hidden relative mt-2 rounded-lg bg-slate-900 border border-slate-700 p-4">
+                    <button onclick="copyScript()" class="absolute top-2 right-2 text-slate-400 hover:text-white transition-colors" title="Copy to clipboard">
+                        <i class="fa-regular fa-copy"></i>
+                    </button>
+                    <pre><code id="script-output" class="text-xs text-green-400 font-mono whitespace-pre-wrap"></code></pre>
                 </div>
-            );
-        };
+            </section>
 
-        const Remediation = () => (
-            <div className="enterprise-card p-6 mb-6 lg:mb-0">
-                <h2 className="text-lg font-semibold mb-5 flex items-center gap-2 text-white">
-                    <Icons.Book />
-                    Remediation Playbook
+            <!-- Remediation Playbook -->
+            <section class="glass-panel rounded-xl p-6 shadow-lg">
+                <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-book-open text-blue-400"></i> Remediation Playbook
                 </h2>
                 
-                <div className="space-y-6">
-                    <div>
-                        <h3 className="text-sm font-medium text-slate-200 mb-3 uppercase tracking-wider">Approved Patch Targets</h3>
-                        <div className="grid grid-cols-2 gap-3 text-sm">
-                            <div className="bg-slate-800/50 border border-slate-700/50 p-3 rounded-lg flex justify-between items-center">
-                                <span className="text-slate-400">Branch 8.5</span>
-                                <span className="text-brand-success font-mono">v8.5.12</span>
-                            </div>
-                            <div className="bg-slate-800/50 border border-slate-700/50 p-3 rounded-lg flex justify-between items-center">
-                                <span className="text-slate-400">Branch 8.4</span>
-                                <span className="text-brand-success font-mono">v8.4.27</span>
-                            </div>
-                            <div className="bg-slate-800/50 border border-slate-700/50 p-3 rounded-lg flex justify-between items-center">
-                                <span className="text-slate-400">Branch 8.3</span>
-                                <span className="text-brand-success font-mono">v8.3.36</span>
-                            </div>
-                            <div className="bg-slate-800/50 border border-slate-700/50 p-3 rounded-lg flex justify-between items-center">
-                                <span className="text-slate-400">Branch 8.2</span>
-                                <span className="text-brand-success font-mono">v8.2.35</span>
-                            </div>
-                        </div>
-                        <div className="mt-3 p-3 bg-slate-900 border-l-2 border-brand-danger text-sm text-slate-300 rounded-r-lg">
-                            <span className="font-semibold text-white">Legacy Environments:</span> PHP 8.1 and below are End-of-Life (EOL) and will not receive patches. Application migration is strictly required.
-                        </div>
+                <h3 class="text-xs font-medium text-slate-400 mb-3 uppercase tracking-wider">Approved Patch Targets</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                    <div class="bg-slate-800/50 border border-slate-700 p-3 rounded-lg flex flex-col items-center justify-center">
+                        <span class="text-xs text-slate-400 mb-1">Branch 8.5</span>
+                        <span class="text-sm font-semibold text-emerald-400">v8.5.12</span>
                     </div>
+                    <div class="bg-slate-800/50 border border-slate-700 p-3 rounded-lg flex flex-col items-center justify-center">
+                        <span class="text-xs text-slate-400 mb-1">Branch 8.4</span>
+                        <span class="text-sm font-semibold text-emerald-400">v8.4.27</span>
+                    </div>
+                    <div class="bg-slate-800/50 border border-slate-700 p-3 rounded-lg flex flex-col items-center justify-center">
+                        <span class="text-xs text-slate-400 mb-1">Branch 8.3</span>
+                        <span class="text-sm font-semibold text-emerald-400">v8.3.36</span>
+                    </div>
+                    <div class="bg-slate-800/50 border border-slate-700 p-3 rounded-lg flex flex-col items-center justify-center">
+                        <span class="text-xs text-slate-400 mb-1">Branch 8.2</span>
+                        <span class="text-sm font-semibold text-emerald-400">v8.2.35</span>
+                    </div>
+                </div>
 
-                    <div>
-                        <h3 className="text-sm font-medium text-slate-200 mb-3 uppercase tracking-wider">Standard Operating Procedures</h3>
-                        <ul className="space-y-3 text-sm text-slate-300">
-                            <li className="flex gap-3">
-                                <span className="w-1.5 h-1.5 rounded-full bg-brand-primary mt-2 shrink-0"></span>
-                                <span>Verify current version across all production fleet nodes using <code>php -v</code>.</span>
-                            </li>
-                            <li className="flex gap-3">
-                                <span className="w-1.5 h-1.5 rounded-full bg-brand-primary mt-2 shrink-0"></span>
-                                <span>Deploy updates via official OS package managers. Ensure automated CI/CD pipelines are pointing to patched repositories.</span>
-                            </li>
-                            <li className="flex gap-3">
-                                <span className="w-1.5 h-1.5 rounded-full bg-brand-primary mt-2 shrink-0"></span>
-                                <span>For managed/shared environments, escalate immediately to hosting vendor support to confirm infrastructure patching status. CMS updates (e.g., WordPress core) do not mitigate this vulnerability.</span>
-                            </li>
-                        </ul>
+                <div class="bg-red-500/10 border-l-4 border-red-500 p-4 rounded-r-lg mb-6">
+                    <p class="text-sm text-red-200">
+                        <strong class="text-red-400">Legacy Environments:</strong> PHP 8.1 and below are End-of-Life (EOL) and will not receive patches. Application migration is strictly required.
+                    </p>
+                </div>
+
+                <h3 class="text-xs font-medium text-slate-400 mb-3 uppercase tracking-wider">Standard Operating Procedures</h3>
+                <ul class="space-y-3 text-sm text-slate-300 list-disc pl-5 marker:text-blue-500">
+                    <li>Deploy updates via official OS package managers. Ensure automated CI/CD pipelines point to patched repositories.</li>
+                    <li>For managed/shared environments, escalate immediately to hosting vendor support to confirm infrastructure patching status. CMS updates (e.g., WordPress core) do not mitigate this vulnerability.</li>
+                    <li>Restart web server services post-patch to ensure new PHP binaries are loaded into memory.</li>
+                </ul>
+            </section>
+        </div>
+
+        <!-- Right Column: AI Chatbot -->
+        <section class="glass-panel rounded-xl shadow-lg flex flex-col h-[600px] lg:h-auto">
+            <div class="p-4 border-b border-slate-700/50 flex items-center gap-3 bg-slate-800/30 rounded-t-xl">
+                <div class="w-8 h-8 rounded bg-blue-600 flex items-center justify-center text-white">
+                    <i class="fa-solid fa-microchip"></i>
+                </div>
+                <div>
+                    <h2 class="text-sm font-semibold text-white">AI Patching Assistant</h2>
+                    <div class="flex items-center gap-1.5">
+                        <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                        <span class="text-xs text-emerald-400">Online & Ready</span>
                     </div>
                 </div>
             </div>
-        );
-
-        const Chatbot = () => {
-            const [messages, setMessages] = useState([
-                { role: 'model', text: 'AI Patching Assistant initialized. I can provide OS-specific commands, migration advice for EOL versions, and mitigation strategies. How can I assist your team today?' }
-            ]);
-            const [input, setInput] = useState('');
-            const [isTyping, setIsTyping] = useState(false);
-            const messagesEndRef = useRef(null);
-
-            const scrollToBottom = () => {
-                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-            };
-
-            useEffect(() => {
-                scrollToBottom();
-            }, [messages, isTyping]);
-
-            const handleSubmit = async (e) => {
-                e.preventDefault();
-                if (!input.trim() || isTyping) return;
-
-                const userMsg = input.trim();
-                setInput('');
-                setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
-                setIsTyping(true);
-
-                try {
-                    const systemPrompt = "You are an Enterprise AI Patching Assistant designed to help IT administrators and security teams remediate the recent critical PHP vulnerability. The approved safe versions are PHP 8.5.12, 8.4.27, 8.3.36, and 8.2.35. Maintain a highly professional, clinical, and authoritative tone suitable for enterprise environments. Provide precise terminal commands when asked. Do not use slang or casual language.";
-                    
-                    const chatHistory = messages.map(msg => ({
-                        role: msg.role === 'model' ? 'model' : 'user',
-                        parts: [{ text: msg.text }]
-                    }));
-                    chatHistory.push({ role: 'user', parts: [{ text: userMsg }] });
-
-                    const payload = {
-                        contents: chatHistory,
-                        systemInstruction: {
-                            parts: [{ text: systemPrompt }]
-                        },
-                    };
-
-                    const apiKey = ""; 
-                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
-
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    const result = await response.json();
-                    
-                    if (result.candidates && result.candidates[0].content.parts[0].text) {
-                        setMessages(prev => [...prev, { role: 'model', text: result.candidates[0].content.parts[0].text }]);
-                    } else {
-                        throw new Error("Invalid response format");
-                    }
-                } catch (error) {
-                    console.error("Chat API Error:", error);
-                    setMessages(prev => [...prev, { role: 'model', text: "Connection to AI services timed out. Please verify your network settings or review documentation manually." }]);
-                } finally {
-                    setIsTyping(false);
-                }
-            };
-
-            return (
-                <div className="enterprise-card flex flex-col h-[600px] lg:h-full relative overflow-hidden">
-                    <div className="bg-slate-900 border-b border-slate-800 p-4 flex items-center gap-3 relative z-10">
-                        <div className="p-2 bg-brand-primary/10 text-brand-primary rounded-lg">
-                            <Icons.Bot />
-                        </div>
-                        <div>
-                            <h2 className="font-semibold text-white">AI Patching Assistant</h2>
-                            <p className="text-xs text-brand-success flex items-center gap-1 mt-0.5">
-                                <span className="w-1.5 h-1.5 bg-brand-success rounded-full block"></span>
-                                Online & Ready
-                            </p>
-                        </div>
-                    </div>
-                    
-                    <div className="flex-1 overflow-y-auto p-4 space-y-5">
-                        {messages.map((msg, idx) => (
-                            <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-[85%] p-4 rounded-xl text-sm leading-relaxed ${
-                                    msg.role === 'user' 
-                                        ? 'bg-brand-primary text-white rounded-tr-sm' 
-                                        : 'bg-slate-800 border border-slate-700 text-slate-200 rounded-tl-sm'
-                                }`}>
-                                    <div className="whitespace-pre-wrap font-sans">{msg.text}</div>
-                                </div>
-                            </div>
-                        ))}
-                        {isTyping && (
-                            <div className="flex justify-start">
-                                <div className="bg-slate-800 border border-slate-700 text-slate-400 max-w-[80%] p-4 rounded-xl rounded-tl-sm flex gap-2 items-center">
-                                    <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce"></span>
-                                    <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce" style={{animationDelay: '0.15s'}}></span>
-                                    <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce" style={{animationDelay: '0.3s'}}></span>
-                                </div>
-                            </div>
-                        )}
-                        <div ref={messagesEndRef} />
-                    </div>
-
-                    <div className="p-4 border-t border-slate-800 bg-slate-900 relative z-10">
-                        <form onSubmit={handleSubmit} className="relative">
-                            <input 
-                                type="text" 
-                                value={input}
-                                onChange={(e) => setInput(e.target.value)}
-                                placeholder="E.g., How do I update PHP 8.1 on Ubuntu 22.04?" 
-                                className="w-full bg-slate-950 border border-slate-700 text-slate-100 rounded-lg py-3 pl-4 pr-12 text-sm focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all placeholder:text-slate-500"
-                            />
-                            <button 
-                                type="submit"
-                                disabled={isTyping || !input.trim()}
-                                className="absolute right-2 top-1.5 p-1.5 text-slate-400 hover:text-brand-primary hover:bg-slate-800 rounded-md transition-colors disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-slate-400"
-                            >
-                                <Icons.Send />
-                            </button>
-                        </form>
-                    </div>
+            
+            <div id="chat-window" class="flex-1 p-4 overflow-y-auto chat-scroll flex flex-col gap-4">
+                <div class="bg-slate-800 border border-slate-700 p-3 rounded-lg rounded-tl-none self-start max-w-[85%] text-sm text-slate-200">
+                    AI Patching Assistant initialized. I can provide OS-specific commands, migration advice for EOL versions, and mitigation strategies. How can I assist your team today?
                 </div>
-            );
+            </div>
+
+            <div class="p-4 border-t border-slate-700/50 bg-slate-800/30 rounded-b-xl relative">
+                <input type="password" id="api-key" placeholder="Enter Gemini API Key to enable chat..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-400 mb-2 focus:ring-1 focus:ring-blue-500 outline-none">
+                <div class="relative">
+                    <input type="text" id="chat-input" placeholder="E.g., How do I update PHP 8.1 on Ubuntu 22.04?" class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-3 pr-10 py-3 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none placeholder-slate-500" onkeypress="if(event.key === 'Enter') sendMessage()">
+                    <button onclick="sendMessage()" class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // --- Fleet Audit Generator Logic ---
+        const scripts = {
+            ubuntu: {
+                apache: "#!/bin/bash\n# Ubuntu/Debian Apache PHP Audit\necho \"Checking PHP CLI Version:\"\nphp -v | head -n 1\necho -e \"\\nChecking Installed PHP Packages:\"\ndpkg -l | grep php\necho -e \"\\nChecking Apache PHP Module Status:\"\na2query -m | grep php\necho -e \"\\nChecking Service Status:\"\nsystemctl status apache2 | grep Active",
+                nginx: "#!/bin/bash\n# Ubuntu/Debian Nginx PHP-FPM Audit\necho \"Checking PHP CLI Version:\"\nphp -v | head -n 1\necho -e \"\\nChecking Installed PHP Packages:\"\ndpkg -l | grep php\necho -e \"\\nChecking PHP-FPM Service Status:\"\nsystemctl status php*-fpm | grep Active",
+                cli: "#!/bin/bash\n# Ubuntu/Debian CLI-Only Audit\necho \"Checking PHP CLI Version:\"\nphp -v | head -n 1\necho -e \"\\nChecking Installed PHP Packages:\"\ndpkg -l | grep php"
+            },
+            rhel: {
+                apache: "#!/bin/bash\n# RHEL/CentOS Apache PHP Audit\necho \"Checking PHP CLI Version:\"\nphp -v | head -n 1\necho -e \"\\nChecking Installed PHP Packages:\"\nrpm -qa | grep php\necho -e \"\\nChecking Service Status:\"\nsystemctl status httpd | grep Active",
+                nginx: "#!/bin/bash\n# RHEL/CentOS Nginx PHP-FPM Audit\necho \"Checking PHP CLI Version:\"\nphp -v | head -n 1\necho -e \"\\nChecking Installed PHP Packages:\"\nrpm -qa | grep php\necho -e \"\\nChecking PHP-FPM Service Status:\"\nsystemctl status php-fpm | grep Active",
+                cli: "#!/bin/bash\n# RHEL/CentOS CLI-Only Audit\necho \"Checking PHP CLI Version:\"\nphp -v | head -n 1\necho -e \"\\nChecking Installed PHP Packages:\"\nrpm -qa | grep php"
+            },
+            alpine: {
+                apache: "#!/bin/bash\n# Alpine Linux Apache PHP Audit\necho \"Checking PHP CLI Version:\"\nphp -v | head -n 1\necho -e \"\\nChecking Installed PHP Packages:\"\napk info | grep php",
+                nginx: "#!/bin/bash\n# Alpine Linux Nginx PHP-FPM Audit\necho \"Checking PHP CLI Version:\"\nphp -v | head -n 1\necho -e \"\\nChecking Installed PHP Packages:\"\napk info | grep php\necho -e \"\\nChecking PHP-FPM Process:\"\nps aux | grep php-fpm",
+                cli: "#!/bin/bash\n# Alpine Linux CLI-Only Audit\necho \"Checking PHP CLI Version:\"\nphp -v | head -n 1\necho -e \"\\nChecking Installed PHP Packages:\"\napk info | grep php"
+            }
         };
 
-        const App = () => {
-            return (
-                <div className="max-w-7xl mx-auto">
-                    <Header />
-                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:h-[700px]">
-                        <div className="lg:col-span-3 flex flex-col h-full">
-                            <Scanner />
-                            <div className="flex-1 mt-6">
-                                <Remediation />
-                            </div>
-                        </div>
-                        <div className="lg:col-span-2 h-[600px] lg:h-full">
-                            <Chatbot />
-                        </div>
-                    </div>
-                </div>
-            );
-        };
+        function generateScript() {
+            const os = document.getElementById('os-select').value;
+            const env = document.getElementById('env-select').value;
+            const output = scripts[os][env];
+            
+            document.getElementById('script-output').textContent = output;
+            document.getElementById('script-output-container').classList.remove('hidden');
+        }
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        function copyScript() {
+            const text = document.getElementById('script-output').textContent;
+            navigator.clipboard.writeText(text);
+            alert("Audit script copied to clipboard.");
+        }
+
+        // --- AI Chatbot Logic ---
+        async function sendMessage() {
+            const inputEl = document.getElementById('chat-input');
+            const apiKey = document.getElementById('api-key').value.trim();
+            const message = inputEl.value.trim();
+            const chatWindow = document.getElementById('chat-window');
+
+            if (!message) return;
+            if (!apiKey) {
+                alert("Please enter a Gemini API Key to use the assistant.");
+                return;
+            }
+
+            // Append User Message
+            chatWindow.innerHTML += `
+                <div class="bg-blue-600 text-white p-3 rounded-lg rounded-tr-none self-end max-w-[85%] text-sm">
+                    ${message}
+                </div>
+            `;
+            inputEl.value = '';
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+
+            // Loading state
+            const loadingId = 'loading-' + Date.now();
+            chatWindow.innerHTML += `
+                <div id="${loadingId}" class="bg-slate-800 border border-slate-700 p-3 rounded-lg rounded-tl-none self-start max-w-[85%] text-sm text-slate-400 flex items-center gap-2">
+                    <i class="fa-solid fa-circle-notch fa-spin"></i> Analyzing environment...
+                </div>
+            `;
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        system_instruction: { parts: [{ text: "You are an expert IT security and system administration assistant. Provide highly technical, concise, step-by-step terminal commands to patch PHP vulnerabilities on Linux servers. Assume the user is an experienced system administrator." }]},
+                        contents: [{ parts: [{ text: message }] }]
+                    })
+                });
+
+                const data = await response.json();
+                document.getElementById(loadingId).remove();
+
+                if (data.error) throw new Error(data.error.message);
+                
+                const aiReply = marked.parse(data.candidates[0].content.parts[0].text);
+                
+                chatWindow.innerHTML += `
+                    <div class="bg-slate-800 border border-slate-700 p-4 rounded-lg rounded-tl-none self-start max-w-[95%] text-sm text-slate-200 prose prose-invert prose-sm">
+                        ${aiReply}
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById(loadingId).remove();
+                chatWindow.innerHTML += `
+                    <div class="bg-red-900/50 border border-red-500/50 text-red-200 p-3 rounded-lg rounded-tl-none self-start max-w-[85%] text-sm">
+                        Error: ${error.message}
+                    </div>
+                `;
+            }
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
     </script>
 </body>
 </html>
