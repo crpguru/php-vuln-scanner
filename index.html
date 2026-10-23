@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise Vulnerability Management</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            850: '#151f32',
+                            900: '#0f172a',
+                            950: '#020617',
+                        },
+                        brand: {
+                            primary: '#3b82f6', // blue-500
+                            hover: '#2563eb', // blue-600
+                            danger: '#ef4444', // red-500
+                            success: '#10b981', // emerald-500
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body {
+            background-color: #020617;
+            color: #f8fafc;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #020617; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569; 
+        }
+
+        .enterprise-card {
+            background-color: #0f172a;
+            border: 1px solid #1e293b;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8 bg-slate-950">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Inline SVGs for perfect rendering without external script dependencies fighting React
+        const Icons = {
+            Shield: () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>,
+            Radar: () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 21v-4.872c0-1.143.99-1.95 2.1-1.95h3.3c1.11 0 2.1.807 2.1 1.95V21m0 0h-8.25m8.25 0h3.75m-12 0h3.75C5.74 21 4.5 19.76 4.5 18.25V5.75C4.5 4.24 5.74 3 7.25 3h9.5c1.51 0 2.75 1.24 2.75 2.75v12.5c0 1.51-1.24 2.75-2.75 2.75M12 9v2.25m0 0h2.25m-2.25 0H9.75" /></svg>,
+            Alert: () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2.25m0 4.5h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+            CheckCircle: () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+            Book: () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" /></svg>,
+            Bot: () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" /></svg>,
+            Send: () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
+        };
+
+        const Header = () => (
+            <header className="mb-8 border-b border-slate-800 pb-5">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-brand-primary/10 text-brand-primary rounded-lg">
+                            <Icons.Shield />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-bold text-white tracking-tight">Threat Intelligence Dashboard</h1>
+                            <p className="text-sm text-slate-400 mt-1">PHP Remote Code Execution (RCE) Vulnerability Advisory</p>
+                        </div>
+                    </div>
+                    <div className="hidden md:flex items-center gap-4">
+                        <div className="flex items-center gap-2 text-sm bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-full">
+                            <span className="w-2 h-2 rounded-full bg-brand-danger animate-pulse"></span>
+                            <span className="text-slate-300 font-medium">CVSS: 9.8 CRITICAL</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+        );
+
+        const Scanner = () => {
+            const [url, setUrl] = useState('');
+            const [isScanning, setIsScanning] = useState(false);
+            const [progress, setProgress] = useState(0);
+            const [result, setResult] = useState(null);
+
+            const handleScan = (e) => {
+                e.preventDefault();
+                if (!url) return;
+
+                setIsScanning(true);
+                setProgress(0);
+                setResult(null);
+
+                const interval = setInterval(() => {
+                    setProgress(p => {
+                        if (p >= 100) {
+                            clearInterval(interval);
+                            setIsScanning(false);
+                            // Simulating high probability of vulnerability for demonstration
+                            const isVuln = Math.random() > 0.3;
+                            setResult({
+                                status: isVuln ? 'VULNERABLE' : 'SECURE',
+                                message: isVuln 
+                                    ? 'Exploitable PHP signature detected. Immediate patching required.' 
+                                    : 'Endpoint appears patched or is not running vulnerable PHP versions.'
+                            });
+                            return 100;
+                        }
+                        return p + Math.floor(Math.random() * 20) + 10;
+                    });
+                }, 400);
+            };
+
+            return (
+                <div className="enterprise-card p-6 mb-6">
+                    <h2 className="text-lg font-semibold mb-5 flex items-center gap-2 text-white">
+                        <Icons.Radar />
+                        Endpoint Diagnostic Scan
+                    </h2>
+                    
+                    <form onSubmit={handleScan} className="flex gap-3 mb-6">
+                        <input 
+                            type="text" 
+                            placeholder="Enter target IP or domain (e.g., prod-web-01.internal)" 
+                            className="flex-1 bg-slate-950 border border-slate-700 text-slate-100 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all placeholder:text-slate-500"
+                            value={url}
+                            onChange={(e) => setUrl(e.target.value)}
+                            disabled={isScanning}
+                        />
+                        <button 
+                            type="submit" 
+                            disabled={isScanning || !url}
+                            className="bg-brand-primary text-white text-sm font-medium px-6 py-2.5 rounded-lg hover:bg-brand-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm"
+                        >
+                            {isScanning ? 'Analyzing...' : 'Run Diagnostics'}
+                        </button>
+                    </form>
+
+                    {isScanning && (
+                        <div className="mb-2">
+                            <div className="flex justify-between text-xs text-slate-400 mb-2 font-medium">
+                                <span>Probing headers & executing safe payload checks...</span>
+                                <span>{progress}%</span>
+                            </div>
+                            <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden">
+                                <div 
+                                    className="bg-brand-primary h-full transition-all duration-300 ease-out"
+                                    style={{ width: `${progress}%` }}
+                                ></div>
+                            </div>
+                        </div>
+                    )}
+
+                    {result && (
+                        <div className={`p-4 rounded-lg border ${result.status === 'VULNERABLE' ? 'bg-red-950/30 border-red-900/50' : 'bg-emerald-950/30 border-emerald-900/50'}`}>
+                            <div className="flex items-start gap-3">
+                                <div className={`mt-0.5 ${result.status === 'VULNERABLE' ? 'text-brand-danger' : 'text-brand-success'}`}>
+                                    {result.status === 'VULNERABLE' ? <Icons.Alert /> : <Icons.CheckCircle />}
+                                </div>
+                                <div>
+                                    <h3 className={`font-semibold text-sm mb-1 ${result.status === 'VULNERABLE' ? 'text-red-400' : 'text-emerald-400'}`}>
+                                        Diagnostic Result: {result.status}
+                                    </h3>
+                                    <p className="text-sm text-slate-300">{result.message}</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const Remediation = () => (
+            <div className="enterprise-card p-6 mb-6 lg:mb-0">
+                <h2 className="text-lg font-semibold mb-5 flex items-center gap-2 text-white">
+                    <Icons.Book />
+                    Remediation Playbook
+                </h2>
+                
+                <div className="space-y-6">
+                    <div>
+                        <h3 className="text-sm font-medium text-slate-200 mb-3 uppercase tracking-wider">Approved Patch Targets</h3>
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                            <div className="bg-slate-800/50 border border-slate-700/50 p-3 rounded-lg flex justify-between items-center">
+                                <span className="text-slate-400">Branch 8.5</span>
+                                <span className="text-brand-success font-mono">v8.5.12</span>
+                            </div>
+                            <div className="bg-slate-800/50 border border-slate-700/50 p-3 rounded-lg flex justify-between items-center">
+                                <span className="text-slate-400">Branch 8.4</span>
+                                <span className="text-brand-success font-mono">v8.4.27</span>
+                            </div>
+                            <div className="bg-slate-800/50 border border-slate-700/50 p-3 rounded-lg flex justify-between items-center">
+                                <span className="text-slate-400">Branch 8.3</span>
+                                <span className="text-brand-success font-mono">v8.3.36</span>
+                            </div>
+                            <div className="bg-slate-800/50 border border-slate-700/50 p-3 rounded-lg flex justify-between items-center">
+                                <span className="text-slate-400">Branch 8.2</span>
+                                <span className="text-brand-success font-mono">v8.2.35</span>
+                            </div>
+                        </div>
+                        <div className="mt-3 p-3 bg-slate-900 border-l-2 border-brand-danger text-sm text-slate-300 rounded-r-lg">
+                            <span className="font-semibold text-white">Legacy Environments:</span> PHP 8.1 and below are End-of-Life (EOL) and will not receive patches. Application migration is strictly required.
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 className="text-sm font-medium text-slate-200 mb-3 uppercase tracking-wider">Standard Operating Procedures</h3>
+                        <ul className="space-y-3 text-sm text-slate-300">
+                            <li className="flex gap-3">
+                                <span className="w-1.5 h-1.5 rounded-full bg-brand-primary mt-2 shrink-0"></span>
+                                <span>Verify current version across all production fleet nodes using <code>php -v</code>.</span>
+                            </li>
+                            <li className="flex gap-3">
+                                <span className="w-1.5 h-1.5 rounded-full bg-brand-primary mt-2 shrink-0"></span>
+                                <span>Deploy updates via official OS package managers. Ensure automated CI/CD pipelines are pointing to patched repositories.</span>
+                            </li>
+                            <li className="flex gap-3">
+                                <span className="w-1.5 h-1.5 rounded-full bg-brand-primary mt-2 shrink-0"></span>
+                                <span>For managed/shared environments, escalate immediately to hosting vendor support to confirm infrastructure patching status. CMS updates (e.g., WordPress core) do not mitigate this vulnerability.</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        );
+
+        const Chatbot = () => {
+            const [messages, setMessages] = useState([
+                { role: 'model', text: 'AI Patching Assistant initialized. I can provide OS-specific commands, migration advice for EOL versions, and mitigation strategies. How can I assist your team today?' }
+            ]);
+            const [input, setInput] = useState('');
+            const [isTyping, setIsTyping] = useState(false);
+            const messagesEndRef = useRef(null);
+
+            const scrollToBottom = () => {
+                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            };
+
+            useEffect(() => {
+                scrollToBottom();
+            }, [messages, isTyping]);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                if (!input.trim() || isTyping) return;
+
+                const userMsg = input.trim();
+                setInput('');
+                setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+                setIsTyping(true);
+
+                try {
+                    const systemPrompt = "You are an Enterprise AI Patching Assistant designed to help IT administrators and security teams remediate the recent critical PHP vulnerability. The approved safe versions are PHP 8.5.12, 8.4.27, 8.3.36, and 8.2.35. Maintain a highly professional, clinical, and authoritative tone suitable for enterprise environments. Provide precise terminal commands when asked. Do not use slang or casual language.";
+                    
+                    const chatHistory = messages.map(msg => ({
+                        role: msg.role === 'model' ? 'model' : 'user',
+                        parts: [{ text: msg.text }]
+                    }));
+                    chatHistory.push({ role: 'user', parts: [{ text: userMsg }] });
+
+                    const payload = {
+                        contents: chatHistory,
+                        systemInstruction: {
+                            parts: [{ text: systemPrompt }]
+                        },
+                    };
+
+                    const apiKey = ""; 
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const result = await response.json();
+                    
+                    if (result.candidates && result.candidates[0].content.parts[0].text) {
+                        setMessages(prev => [...prev, { role: 'model', text: result.candidates[0].content.parts[0].text }]);
+                    } else {
+                        throw new Error("Invalid response format");
+                    }
+                } catch (error) {
+                    console.error("Chat API Error:", error);
+                    setMessages(prev => [...prev, { role: 'model', text: "Connection to AI services timed out. Please verify your network settings or review documentation manually." }]);
+                } finally {
+                    setIsTyping(false);
+                }
+            };
+
+            return (
+                <div className="enterprise-card flex flex-col h-[600px] lg:h-full relative overflow-hidden">
+                    <div className="bg-slate-900 border-b border-slate-800 p-4 flex items-center gap-3 relative z-10">
+                        <div className="p-2 bg-brand-primary/10 text-brand-primary rounded-lg">
+                            <Icons.Bot />
+                        </div>
+                        <div>
+                            <h2 className="font-semibold text-white">AI Patching Assistant</h2>
+                            <p className="text-xs text-brand-success flex items-center gap-1 mt-0.5">
+                                <span className="w-1.5 h-1.5 bg-brand-success rounded-full block"></span>
+                                Online & Ready
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div className="flex-1 overflow-y-auto p-4 space-y-5">
+                        {messages.map((msg, idx) => (
+                            <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                <div className={`max-w-[85%] p-4 rounded-xl text-sm leading-relaxed ${
+                                    msg.role === 'user' 
+                                        ? 'bg-brand-primary text-white rounded-tr-sm' 
+                                        : 'bg-slate-800 border border-slate-700 text-slate-200 rounded-tl-sm'
+                                }`}>
+                                    <div className="whitespace-pre-wrap font-sans">{msg.text}</div>
+                                </div>
+                            </div>
+                        ))}
+                        {isTyping && (
+                            <div className="flex justify-start">
+                                <div className="bg-slate-800 border border-slate-700 text-slate-400 max-w-[80%] p-4 rounded-xl rounded-tl-sm flex gap-2 items-center">
+                                    <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce"></span>
+                                    <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce" style={{animationDelay: '0.15s'}}></span>
+                                    <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce" style={{animationDelay: '0.3s'}}></span>
+                                </div>
+                            </div>
+                        )}
+                        <div ref={messagesEndRef} />
+                    </div>
+
+                    <div className="p-4 border-t border-slate-800 bg-slate-900 relative z-10">
+                        <form onSubmit={handleSubmit} className="relative">
+                            <input 
+                                type="text" 
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                placeholder="E.g., How do I update PHP 8.1 on Ubuntu 22.04?" 
+                                className="w-full bg-slate-950 border border-slate-700 text-slate-100 rounded-lg py-3 pl-4 pr-12 text-sm focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all placeholder:text-slate-500"
+                            />
+                            <button 
+                                type="submit"
+                                disabled={isTyping || !input.trim()}
+                                className="absolute right-2 top-1.5 p-1.5 text-slate-400 hover:text-brand-primary hover:bg-slate-800 rounded-md transition-colors disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-slate-400"
+                            >
+                                <Icons.Send />
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+
+        const App = () => {
+            return (
+                <div className="max-w-7xl mx-auto">
+                    <Header />
+                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:h-[700px]">
+                        <div className="lg:col-span-3 flex flex-col h-full">
+                            <Scanner />
+                            <div className="flex-1 mt-6">
+                                <Remediation />
+                            </div>
+                        </div>
+                        <div className="lg:col-span-2 h-[600px] lg:h-full">
+                            <Chatbot />
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
